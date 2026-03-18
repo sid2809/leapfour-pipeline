@@ -49,7 +49,7 @@ function decrypt(encryptedText: string): string {
 export async function getSetting(key: string): Promise<string | null> {
   const setting = await prisma.setting.findUnique({ where: { key } });
   if (!setting) return null;
-  if (SENSITIVE_SETTINGS.includes(key)) {
+  if ((SENSITIVE_SETTINGS as readonly string[]).includes(key)) {
     return decrypt(setting.value);
   }
   return setting.value;
@@ -64,7 +64,7 @@ export async function getSettings(keys: string[]): Promise<Record<string, string
     const setting = settings.find(s => s.key === key);
     if (!setting) {
       result[key] = null;
-    } else if (SENSITIVE_SETTINGS.includes(key)) {
+    } else if ((SENSITIVE_SETTINGS as readonly string[]).includes(key)) {
       result[key] = decrypt(setting.value);
     } else {
       result[key] = setting.value;
@@ -77,7 +77,7 @@ export async function getAllSettings(): Promise<Record<string, string>> {
   const settings = await prisma.setting.findMany();
   const result: Record<string, string> = {};
   for (const setting of settings) {
-    if (SENSITIVE_SETTINGS.includes(setting.key)) {
+    if ((SENSITIVE_SETTINGS as readonly string[]).includes(setting.key)) {
       // Mask sensitive values for API response: show last 4 chars
       const decrypted = decrypt(setting.value);
       result[setting.key] = decrypted.length > 4
@@ -94,7 +94,7 @@ export async function getAllSettings(): Promise<Record<string, string>> {
 // Write settings
 // ============================================================
 export async function setSetting(key: string, value: string): Promise<void> {
-  const storeValue = SENSITIVE_SETTINGS.includes(key) ? encrypt(value) : value;
+  const storeValue = (SENSITIVE_SETTINGS as readonly string[]).includes(key) ? encrypt(value) : value;
   await prisma.setting.upsert({
     where: { key },
     update: { value: storeValue },
@@ -104,7 +104,7 @@ export async function setSetting(key: string, value: string): Promise<void> {
 
 export async function setSettings(entries: Record<string, string>): Promise<void> {
   const operations = Object.entries(entries).map(([key, value]) => {
-    const storeValue = SENSITIVE_SETTINGS.includes(key) ? encrypt(value) : value;
+    const storeValue = (SENSITIVE_SETTINGS as readonly string[]).includes(key) ? encrypt(value) : value;
     return prisma.setting.upsert({
       where: { key },
       update: { value: storeValue },
