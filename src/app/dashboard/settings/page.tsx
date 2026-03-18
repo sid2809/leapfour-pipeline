@@ -93,7 +93,7 @@ export default function SettingsPage() {
     setSaving(true);
 
     const changed: Record<string, string> = {};
-    for (const key of dirty) {
+    for (const key of Array.from(dirty)) {
       changed[key] = values[key];
     }
 
