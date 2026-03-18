@@ -22,7 +22,7 @@ FROM node:20-alpine AS prisma
 WORKDIR /app
 RUN apk add --no-cache openssl
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json ./
+COPY package.json prisma.config.ts ./
 COPY prisma ./prisma
 RUN npx prisma generate
 
@@ -33,6 +33,7 @@ RUN apk add --no-cache openssl
 COPY --from=prisma /app/node_modules ./node_modules
 COPY package.json next.config.mjs tsconfig.json tailwind.config.ts postcss.config.mjs components.json ./
 COPY src ./src
+COPY --from=prisma /app/src/generated ./src/generated
 COPY prisma ./prisma
 COPY public ./public
 
@@ -58,6 +59,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/src/generated ./src/generated
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/bcryptjs ./node_modules/bcryptjs
