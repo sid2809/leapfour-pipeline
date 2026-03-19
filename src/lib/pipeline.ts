@@ -80,13 +80,22 @@ export async function processScrapedResults(
     }
   }
 
+  let nextStatus: string;
+  if (totalFiltered > 0) {
+    nextStatus = 'ENRICHING';
+  } else if (totalFilteredNoSite > 0) {
+    nextStatus = 'ENRICHING';
+  } else {
+    nextStatus = 'READY';
+  }
+
   await prisma.campaign.update({
     where: { id: campaignId },
     data: {
       totalScraped,
       totalFiltered: totalFiltered + totalFilteredNoSite,
       totalParked,
-      status: (totalFiltered + totalFilteredNoSite) > 0 ? 'ENRICHING' : 'READY',
+      status: nextStatus,
     },
   });
 

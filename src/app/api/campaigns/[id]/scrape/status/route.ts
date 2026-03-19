@@ -8,6 +8,7 @@ import { prisma } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
 import { pollScrapeStatus } from '@/lib/outscraper';
 import { handleScrapeComplete } from '@/lib/pipeline';
+import { enrichCampaign } from '@/lib/enrichment';
 
 export async function GET(
   request: NextRequest,
@@ -60,6 +61,12 @@ export async function GET(
       }
 
       await handleScrapeComplete(campaign.id, result.data);
+
+      // Auto-trigger enrichment in background
+      enrichCampaign(campaign.id).catch(err => {
+        console.error('Auto-enrichment failed:', err);
+        prisma.campaign.update({ where: { id: campaign.id }, data: { status: 'FAILED' } }).catch(() => {});
+      });
 
       const final = await prisma.campaign.findUnique({
         where: { id: campaign.id },
