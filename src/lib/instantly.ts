@@ -94,16 +94,10 @@ export async function pushCategoryToInstantly(
   const instantlyCampaign = await createRes.json();
   const instantlyCampaignId = instantlyCampaign.id;
 
-  // Step 2: Add leads in bulk (max 100 per request)
-  const batches: typeof leads[] = [];
-  for (let i = 0; i < leads.length; i += 100) {
-    batches.push(leads.slice(i, i + 100));
-  }
-
   let totalAdded = 0;
 
-  for (const batch of batches) {
-    const leadPayloads = batch.map(lead => ({
+  for (const lead of leads) {
+    const leadPayload = {
       email: lead.email,
       first_name: lead.firstName || '',
       company_name: lead.businessName || '',
@@ -133,23 +127,31 @@ export async function pushCategoryToInstantly(
         SenderName: senderName,
         PhysicalAddress: physicalAddress,
       },
-    }));
+    };
 
-    const addRes = await fetch(`${BASE_URL}/leads`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(leadPayloads),
-    });
+    try {
+      const addRes = await fetch(`${BASE_URL}/leads`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(leadPayload),
+      });
 
-    if (!addRes.ok) {
-      const errText = await addRes.text();
-      throw new Error(`Instantly add leads failed (${addRes.status}): ${errText.slice(0, 200)}`);
+      if (!addRes.ok) {
+        console.error(`Failed to add lead ${lead.email}: ${addRes.status}`);
+        continue;
+      }
+      totalAdded++;
+    } catch (err) {
+      console.error(`Failed to add lead ${lead.email}:`, err);
     }
 
-    totalAdded += batch.length;
+    // Small delay to avoid rate limiting
+    if (leads.length > 10) {
+      await new Promise(r => setTimeout(r, 200));
+    }
   }
 
   // Mark leads as exported
