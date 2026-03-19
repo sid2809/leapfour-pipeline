@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { Trash2, Search, RefreshCw, Zap } from 'lucide-react';
+import { Trash2, Search, RefreshCw, Zap, Download, Send } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CATEGORY_LABELS, CATEGORY_COLORS, CATEGORIES } from '@/lib/constants';
 
@@ -140,6 +140,12 @@ export default function CampaignDetailPage() {
   const [enriching, setEnriching] = useState(false);
   const [categorizing, setCategorizing] = useState(false);
 
+  // Export
+  const [exportCategories, setExportCategories] = useState<{ category: string; count: number }[]>([]);
+  const [pushingCategory, setPushingCategory] = useState<string | null>(null);
+  const [downloadingCategory, setDownloadingCategory] = useState<string | null>(null);
+  const [downloadingAll, setDownloadingAll] = useState(false);
+
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   // ---------- Fetch campaign ----------
@@ -177,6 +183,16 @@ export default function CampaignDetailPage() {
     setLeadsLoading(false);
   }, [id, leadPage, leadCategory, leadStatus, leadSearch, leadSortBy, leadSortDir]);
 
+  // ---------- Fetch export categories ----------
+
+  const fetchExportCategories = useCallback(async () => {
+    const res = await fetch(`/api/campaigns/${id}/export`, { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      setExportCategories(data.categories || []);
+    }
+  }, [id]);
+
   // ---------- Initial load ----------
 
   useEffect(() => {
@@ -190,8 +206,11 @@ export default function CampaignDetailPage() {
   useEffect(() => {
     if (!loading && campaign) {
       fetchLeads();
+      if (['READY', 'EXPORTED', 'PARTIALLY_EXPORTED'].includes(campaign.status)) {
+        fetchExportCategories();
+      }
     }
-  }, [loading, campaign?.status, fetchLeads]);
+  }, [loading, campaign?.status, fetchLeads, fetchExportCategories]);
 
   // ---------- Polling ----------
 
@@ -325,6 +344,68 @@ export default function CampaignDetailPage() {
       toast.error('Categorization failed');
     }
     setCategorizing(false);
+  }
+
+  async function handleDownloadCsv(category: string) {
+    setDownloadingCategory(category);
+    try {
+      const res = await fetch(`/api/campaigns/${id}/export?category=${encodeURIComponent(category)}`, { credentials: 'include' });
+      if (!res.ok) {
+        const data = await res.json();
+        toast.error(data.error || 'Download failed');
+        setDownloadingCategory(null);
+        return;
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get('Content-Disposition') || '';
+      const filenameMatch = disposition.match(/filename="(.+)"/);
+      const filename = filenameMatch ? filenameMatch[1] : `${category}.csv`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Downloaded ${filename}`);
+      fetchExportCategories();
+      fetchCampaign();
+      fetchLeads();
+    } catch {
+      toast.error('Download failed');
+    }
+    setDownloadingCategory(null);
+  }
+
+  async function handleDownloadAll() {
+    setDownloadingAll(true);
+    for (const { category } of exportCategories) {
+      await handleDownloadCsv(category);
+    }
+    setDownloadingAll(false);
+  }
+
+  async function handlePushToInstantly(category: string) {
+    setPushingCategory(category);
+    try {
+      const res = await fetch(`/api/campaigns/${id}/push-instantly`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ category }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || `Pushed ${data.leadsAdded} leads to Instantly`);
+        fetchExportCategories();
+        fetchCampaign();
+        fetchLeads();
+      } else {
+        toast.error(data.error || 'Push to Instantly failed');
+      }
+    } catch {
+      toast.error('Push to Instantly failed');
+    }
+    setPushingCategory(null);
   }
 
   // ---------- Elapsed time ----------
@@ -528,6 +609,53 @@ export default function CampaignDetailPage() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Export Section */}
+      {['READY', 'EXPORTED', 'PARTIALLY_EXPORTED'].includes(campaign.status) && exportCategories.length > 0 && (
+        <div className="bg-white border border-neutral-200 rounded-lg p-4 mt-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[15px] font-semibold tracking-tight text-neutral-900">Export</h3>
+            <button
+              onClick={handleDownloadAll}
+              disabled={downloadingAll}
+              className="inline-flex items-center gap-1.5 bg-neutral-900 text-white rounded-md px-3 py-1.5 text-xs font-medium hover:bg-neutral-800 disabled:opacity-50"
+            >
+              <Download size={13} />
+              {downloadingAll ? 'Downloading...' : 'Download All CSVs'}
+            </button>
+          </div>
+          <div className="space-y-2">
+            {exportCategories.map(({ category, count }) => (
+              <div key={category} className="flex items-center justify-between py-2 border-b border-neutral-100 last:border-0">
+                <div className="flex items-center gap-3">
+                  <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide ${CATEGORY_BADGE[category] || 'bg-neutral-100 text-neutral-500'}`}>
+                    {CATEGORY_LABELS[category] || category}
+                  </span>
+                  <span className="text-xs text-neutral-400 font-[tabular-nums]">{count} leads</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleDownloadCsv(category)}
+                    disabled={downloadingCategory === category}
+                    className="inline-flex items-center gap-1 border border-neutral-200 bg-white text-neutral-700 rounded-md px-2.5 py-1 text-[11px] font-medium hover:bg-neutral-50 disabled:opacity-50"
+                  >
+                    <Download size={11} />
+                    {downloadingCategory === category ? '...' : 'CSV'}
+                  </button>
+                  <button
+                    onClick={() => handlePushToInstantly(category)}
+                    disabled={pushingCategory === category}
+                    className="inline-flex items-center gap-1 border border-neutral-200 bg-white text-neutral-700 rounded-md px-2.5 py-1 text-[11px] font-medium hover:bg-neutral-50 disabled:opacity-50"
+                  >
+                    <Send size={11} />
+                    {pushingCategory === category ? '...' : 'Instantly'}
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
