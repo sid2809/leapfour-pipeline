@@ -8,7 +8,8 @@ export async function middleware(request: NextRequest) {
   // Public routes — no auth needed
   if (
     pathname === '/login' ||
-    pathname.startsWith('/api/auth/login')
+    pathname.startsWith('/api/auth/login') ||
+    pathname.startsWith('/api/seed')
   ) {
     return NextResponse.next();
   }
@@ -16,7 +17,7 @@ export async function middleware(request: NextRequest) {
   // Protected: /dashboard/* and /api/* (except /api/auth/login)
   const isProtectedPage = pathname.startsWith('/dashboard');
   const isProtectedApi =
-    pathname.startsWith('/api') && !pathname.startsWith('/api/auth/login');
+    pathname.startsWith('/api') && !pathname.startsWith('/api/auth/login') && !pathname.startsWith('/api/seed');
 
   if (isProtectedPage || isProtectedApi) {
     const payload = await getTokenPayload(request);
