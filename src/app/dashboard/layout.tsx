@@ -2,10 +2,11 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Mail, Settings } from 'lucide-react';
+import { LayoutDashboard, Target, Mail, Settings } from 'lucide-react';
 
 const navLinks = [
   { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
+  { href: '/dashboard/campaigns', label: 'Campaigns', icon: Target },
   { href: '/dashboard/templates', label: 'Templates', icon: Mail },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
