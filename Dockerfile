@@ -61,10 +61,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=prisma /app/prisma.config.ts ./
 COPY --from=builder /app/src/generated ./src/generated
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=prisma /app/node_modules/prisma ./node_modules/prisma
-COPY --from=prisma /app/node_modules/@prisma/engines ./node_modules/@prisma/engines
-COPY --from=builder /app/node_modules/bcryptjs ./node_modules/bcryptjs
+COPY --from=prisma /app/node_modules ./node_modules
 
 COPY docker-start.sh ./
 RUN chmod +x docker-start.sh
