@@ -81,6 +81,7 @@ export const SETTINGS_KEYS = {
   DATAFORSEO_LOGIN: 'dataforseo_login',
   DATAFORSEO_PASSWORD: 'dataforseo_password',
   PAGESPEED_API_KEY: 'pagespeed_api_key',
+  INSTANTLY_API_KEY: 'instantly_api_key',
 
   // Sender info
   SENDER_NAME: 'sender_name',
@@ -103,6 +104,7 @@ export const SENSITIVE_SETTINGS = [
   SETTINGS_KEYS.DATAFORSEO_LOGIN,
   SETTINGS_KEYS.DATAFORSEO_PASSWORD,
   SETTINGS_KEYS.PAGESPEED_API_KEY,
+  SETTINGS_KEYS.INSTANTLY_API_KEY,
 ];
 
 // Default values for scoring thresholds

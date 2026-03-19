@@ -12,6 +12,7 @@ const SETTINGS_KEYS = {
   dataforseo_login: '',
   dataforseo_password: '',
   pagespeed_api_key: '',
+  instantly_api_key: '',
   sender_name: '',
   sender_title: '',
   physical_address: '',
@@ -198,6 +199,19 @@ export default function SettingsPage() {
               onTogglePassword={() => togglePassword('pagespeed_api_key')}
               onTest={() => handleTest('pagespeed')}
               testStatus={testStatus.pagespeed}
+              inputClass={inputClass}
+              labelClass={labelClass}
+            />
+
+            <ApiKeyField
+              label="Instantly API Key"
+              settingsKey="instantly_api_key"
+              value={values.instantly_api_key ?? ''}
+              onChange={(v) => handleChange('instantly_api_key', v)}
+              showPassword={showPassword.instantly_api_key}
+              onTogglePassword={() => togglePassword('instantly_api_key')}
+              onTest={() => handleTest('instantly')}
+              testStatus={testStatus.instantly}
               inputClass={inputClass}
               labelClass={labelClass}
             />

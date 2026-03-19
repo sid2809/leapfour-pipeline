@@ -61,6 +61,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: 'Connected successfully' });
     }
 
+    if (service === 'instantly') {
+      const apiKey = await getSettingWithEnvFallback(SETTINGS_KEYS.INSTANTLY_API_KEY, 'INSTANTLY_API_KEY');
+      if (!apiKey) {
+        return NextResponse.json({ success: false, error: 'API key not configured' });
+      }
+      const res = await fetch('https://api.instantly.ai/api/v2/campaigns?limit=1', {
+        headers: { 'Authorization': `Bearer ${apiKey}` },
+      });
+      if (!res.ok) {
+        return NextResponse.json({ success: false, error: `Instantly returned ${res.status}` });
+      }
+      return NextResponse.json({ success: true, message: 'Connected successfully' });
+    }
+
     return NextResponse.json({ error: 'Unknown service' }, { status: 400 });
   } catch (error) {
     console.error('Test connection error:', error);
