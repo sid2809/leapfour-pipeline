@@ -165,7 +165,7 @@ export async function handleScrapeComplete(
   await prisma.campaign.update({
     where: { id: campaignId },
     data: {
-      outscraperRaw: rawResults as unknown as Record<string, unknown>,
+      outscraperRaw: JSON.parse(JSON.stringify(rawResults)),
     },
   });
 
