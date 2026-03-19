@@ -104,7 +104,7 @@ export async function pushCategoryToInstantly(
       website: lead.websiteDisplay || '',
       phone: lead.phone || '',
       campaign: instantlyCampaignId,
-      payload: {
+      custom_variables: {
         Greeting: buildGreeting(lead.firstName, lead.businessName),
         CompanyName: lead.businessName || '',
         Website: lead.websiteDisplay || '',
