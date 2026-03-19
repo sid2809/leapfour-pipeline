@@ -39,8 +39,7 @@ export async function startScrape(
     async: 'true',
     dropDuplicates: 'true',
   });
-  // Outscraper expects enrichment as JSON array
-  params.append('enrichment', '["domains_service"]');
+  params.append('enrichment', 'domains_service');
 
   const response = await fetch(`${BASE_URL}/maps/search-v3?${params}`, {
     method: 'GET',
