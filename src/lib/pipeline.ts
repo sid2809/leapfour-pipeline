@@ -86,7 +86,7 @@ export async function processScrapedResults(
       totalScraped,
       totalFiltered: totalFiltered + totalFilteredNoSite,
       totalParked,
-      status: 'ENRICHING',
+      status: (totalFiltered + totalFilteredNoSite) > 0 ? 'ENRICHING' : 'READY',
     },
   });
 
