@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { Trash2, Search } from 'lucide-react';
+import { Trash2, Search, RefreshCw, Zap } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CATEGORY_LABELS, CATEGORY_COLORS, CATEGORIES } from '@/lib/constants';
 
@@ -98,9 +98,9 @@ const STATUS_BADGE: Record<string, string> = {
 
 const PROGRESS_STEPS = ['SCRAPING', 'FILTERING', 'ENRICHING', 'CATEGORIZING', 'READY'];
 const PROGRESS_TEXT: Record<string, string> = {
-  SCRAPING: 'Outscraper is scraping Google Maps...',
+  SCRAPING: 'Scraping Google Maps via Outscraper...',
   FILTERING: 'Processing and filtering leads...',
-  ENRICHING: 'Enriching leads with PageSpeed & SERP data...',
+  ENRICHING: 'Running PageSpeed tests & checking Google rankings... This takes 1-3 minutes.',
   CATEGORIZING: 'Scoring and categorizing leads...',
 };
 
@@ -137,6 +137,8 @@ export default function CampaignDetailPage() {
   const [leadSortBy, setLeadSortBy] = useState('createdAt');
   const [leadSortDir, setLeadSortDir] = useState<'asc' | 'desc'>('desc');
   const [leadsLoading, setLeadsLoading] = useState(false);
+  const [enriching, setEnriching] = useState(false);
+  const [categorizing, setCategorizing] = useState(false);
 
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -279,6 +281,52 @@ export default function CampaignDetailPage() {
     setLeadPage(1);
   }
 
+  async function handleEnrich() {
+    setEnriching(true);
+    try {
+      const res = await fetch(`/api/campaigns/${id}/enrich`, {
+        method: 'POST',
+        credentials: 'include',
+        signal: AbortSignal.timeout(180000),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(`Enrichment complete: ${data.enriched} enriched, ${data.categorized} categorized`);
+        await fetchCampaign();
+        fetchLeads();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Enrichment failed');
+      }
+    } catch {
+      toast.error('Enrichment request timed out or failed');
+    }
+    setEnriching(false);
+  }
+
+  async function handleRecategorize() {
+    setCategorizing(true);
+    try {
+      const res = await fetch(`/api/campaigns/${id}/categorize`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const counts = Object.entries(data.byCategory || {}).map(([k, v]) => `${CATEGORY_LABELS[k] || k}: ${v}`).join(', ');
+        toast.success(`Re-categorized ${data.totalCategorized} leads. ${counts}`);
+        await fetchCampaign();
+        fetchLeads();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Categorization failed');
+      }
+    } catch {
+      toast.error('Categorization failed');
+    }
+    setCategorizing(false);
+  }
+
   // ---------- Elapsed time ----------
 
   function getElapsedTime() {
@@ -368,6 +416,26 @@ export default function CampaignDetailPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {campaign.status === 'READY' && (
+            <button
+              onClick={handleRecategorize}
+              disabled={categorizing}
+              className="inline-flex items-center gap-1.5 bg-white border border-neutral-200 text-neutral-700 rounded-md px-3 py-1.5 text-xs font-medium hover:bg-neutral-50 disabled:opacity-50"
+            >
+              <RefreshCw size={13} className={categorizing ? 'animate-spin' : ''} />
+              {categorizing ? 'Re-categorizing...' : 'Re-categorize All'}
+            </button>
+          )}
+          {(campaign.status === 'ENRICHING' || campaign.status === 'FAILED' || campaign.stats.byStatus?.['FILTERED'] > 0) && (
+            <button
+              onClick={handleEnrich}
+              disabled={enriching}
+              className="inline-flex items-center gap-1.5 bg-neutral-900 text-white rounded-md px-3 py-1.5 text-xs font-medium hover:bg-neutral-800 disabled:opacity-50"
+            >
+              <Zap size={13} className={enriching ? 'animate-pulse' : ''} />
+              {enriching ? 'Enrichment running...' : 'Run Enrichment'}
+            </button>
+          )}
           {confirmDelete ? (
             <div className="flex items-center gap-2">
               <span className="text-xs text-red-600">Delete this campaign?</span>
@@ -412,6 +480,9 @@ export default function CampaignDetailPage() {
           </div>
           {campaign.status === 'SCRAPING' && (
             <p className="text-[11px] text-neutral-400 mt-2">Polling every 60 seconds. This usually takes 15-25 minutes.</p>
+          )}
+          {campaign.status === 'ENRICHING' && (
+            <p className="text-[11px] text-neutral-400 mt-2">Enrichment runs automatically. PageSpeed tests + SERP checks take 1-3 minutes.</p>
           )}
         </div>
       )}
@@ -556,9 +627,19 @@ export default function CampaignDetailPage() {
                       <td className="px-4 py-3 text-sm text-neutral-500 max-w-[180px] truncate">{lead.email || '—'}</td>
                       <td className="px-4 py-3 text-sm text-neutral-500 font-[tabular-nums]">{lead.googleRating != null ? Number(lead.googleRating).toFixed(1) : '—'}</td>
                       <td className="px-4 py-3 text-sm text-neutral-500 font-[tabular-nums]">{lead.reviewCount ?? '—'}</td>
-                      <td className="px-4 py-3 text-sm text-neutral-500 font-[tabular-nums]">{lead.pagespeedScore ?? '—'}</td>
-                      <td className="px-4 py-3 text-sm text-neutral-500">
-                        {lead.inLocalPack === true ? 'Yes' : lead.inLocalPack === false ? 'No' : '—'}
+                      <td className="px-4 py-3 text-sm font-[tabular-nums]">
+                        {lead.pagespeedScore != null ? (
+                          <span className={lead.pagespeedScore < 30 ? 'text-red-600 font-medium' : lead.pagespeedScore <= 60 ? 'text-yellow-600 font-medium' : 'text-green-600 font-medium'}>
+                            {lead.pagespeedScore}
+                          </span>
+                        ) : '—'}
+                      </td>
+                      <td className="px-4 py-3">
+                        {lead.inLocalPack === true ? (
+                          <span className="inline-block rounded-full px-2 py-0.5 text-[11px] font-medium bg-green-50 text-green-600">Yes</span>
+                        ) : lead.inLocalPack === false ? (
+                          <span className="inline-block rounded-full px-2 py-0.5 text-[11px] font-medium bg-neutral-100 text-neutral-500">No</span>
+                        ) : '—'}
                       </td>
                       <td className="px-4 py-3">
                         {lead.category ? (
