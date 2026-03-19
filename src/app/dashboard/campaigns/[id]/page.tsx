@@ -554,7 +554,7 @@ export default function CampaignDetailPage() {
                     <tr key={lead.id} className="border-b border-neutral-100 hover:bg-neutral-50">
                       <td className="px-4 py-3 text-sm font-medium text-neutral-900 max-w-[200px] truncate">{lead.businessName}</td>
                       <td className="px-4 py-3 text-sm text-neutral-500 max-w-[180px] truncate">{lead.email || '—'}</td>
-                      <td className="px-4 py-3 text-sm text-neutral-500 font-[tabular-nums]">{lead.googleRating?.toFixed(1) ?? '—'}</td>
+                      <td className="px-4 py-3 text-sm text-neutral-500 font-[tabular-nums]">{lead.googleRating != null ? Number(lead.googleRating).toFixed(1) : '—'}</td>
                       <td className="px-4 py-3 text-sm text-neutral-500 font-[tabular-nums]">{lead.reviewCount ?? '—'}</td>
                       <td className="px-4 py-3 text-sm text-neutral-500 font-[tabular-nums]">{lead.pagespeedScore ?? '—'}</td>
                       <td className="px-4 py-3 text-sm text-neutral-500">
